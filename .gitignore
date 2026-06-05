@@ -1,0 +1,21 @@
+# Secrets — NEVER commit these
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Local database (SQLite + write-ahead-log files)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+npm-debug.log*
