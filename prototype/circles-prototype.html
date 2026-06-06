@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0b0c" />
+<title>Circles — Social Music</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ── Design tokens (from the original Circles prototype) ───────── */
+  :root{
+    --bg:#0b0b0c; --surface:#141416; --elevated:#1d1d20;
+    --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+    --text:#f4f4f5; --muted:#a0a0a8; --dim:#6d6d74;
+    --accent:oklch(0.85 0.18 130);        /* lime-green */
+    --accent-soft:oklch(0.85 0.18 130 / .14);
+    --accent-text:#0b0b0c;
+    --pink:oklch(0.75 0.17 10);
+    --blue:oklch(0.75 0.14 240);
+    --violet:oklch(0.72 0.16 300);
+    --amber:oklch(0.8 0.14 70);
+    --stage:radial-gradient(ellipse at top, #1a1a1f 0%, #0a0a0b 60%);
+    --maxw:480px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:#000;color:var(--text);overscroll-behavior-y:none;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.01em;
+  }
+  ::-webkit-scrollbar{width:0;height:0;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  input,textarea{font-family:inherit;}
+  .app{
+    max-width:var(--maxw);margin:0 auto;min-height:100vh;position:relative;
+    background:var(--bg);background-image:var(--stage);overflow:hidden;
+    box-shadow:0 0 80px rgba(0,0,0,.7);
+  }
+  .hidden{display:none !important;}
+  .scroll{height:100vh;overflow-y:auto;padding-bottom:150px;}
+
+  /* venn / circles logo */
+  .venn circle{fill:none;stroke:var(--accent);}
+
+  /* ── LOGIN ─────────────────────────────────────────────────────── */
+  #login{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:36px;
+    background:radial-gradient(120% 78% at 50% 4%, oklch(0.4 0.13 140 / .35) 0%, #0b0b0c 56%);}
+  #login .logo{margin-bottom:26px;filter:drop-shadow(0 0 30px oklch(0.85 0.18 130 / .45));}
+  #login h1{font-size:40px;font-weight:900;margin:0 0 12px;letter-spacing:-1.6px;}
+  #login .sub{color:var(--muted);max-width:300px;margin:0 0 38px;line-height:1.55;font-size:15px;}
+  .btn-spotify{display:flex;align-items:center;gap:11px;background:var(--accent);color:var(--accent-text);
+    font-weight:800;font-size:16px;padding:16px 30px;border-radius:999px;transition:transform .12s,filter .2s;}
+  .btn-spotify:active{transform:scale(.96);}
+  .login-foot{position:absolute;bottom:30px;color:var(--dim);font-size:11.5px;padding:0 36px;line-height:1.55;max-width:400px;}
+
+  /* ── TOP BAR ───────────────────────────────────────────────────── */
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px 10px;background:linear-gradient(to bottom,#0b0b0cF2 70%,transparent);backdrop-filter:blur(8px);}
+  .topbar .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:23px;letter-spacing:-.8px;}
+  .topbar h2{font-size:23px;font-weight:800;letter-spacing:-.6px;margin:0;}
+  .topbar .icons{display:flex;gap:2px;}
+  .icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--text);position:relative;transition:background .15s;}
+  .icon-btn:active{background:var(--elevated);}
+  .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);}
+
+  /* chips */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:6px 18px 14px;}
+  .chip{flex:0 0 auto;padding:8px 15px;border-radius:999px;background:var(--surface);border:1px solid var(--line);
+    font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;transition:.15s;display:flex;align-items:center;gap:6px;}
+  .chip.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
+
+  /* ── POST CARD ─────────────────────────────────────────────────── */
+  .feed{padding:4px 14px;}
+  .post{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;}
+  .post-head{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+  .avatar{border-radius:50%;display:grid;place-items:center;color:#0b0b0c;font-weight:700;flex-shrink:0;}
+  .post-meta{flex:1;min-width:0;line-height:1.25;}
+  .post-meta .who{font-size:14px;font-weight:700;}
+  .post-meta .sub{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:1px;}
+  .badge-circle{display:inline-flex;align-items:center;gap:4px;background:var(--elevated);padding:2px 8px;border-radius:999px;color:var(--muted);font-weight:600;}
+  .post .caption{font-size:14.5px;line-height:1.45;margin:0 0 11px;color:#e7e7ea;}
+
+  .track{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;transition:.15s;}
+  .track:active{background:var(--elevated);}
+  .art{border-radius:9px;flex-shrink:0;position:relative;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.35);}
+  .art::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.22),transparent 60%);}
+  .track .ti{flex:1;min-width:0;}
+  .track .ti .t{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .track .ti .a{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+  .play-btn{width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;flex-shrink:0;}
+
+  /* reactions row */
+  .react-row{display:flex;align-items:center;gap:8px;margin-top:11px;flex-wrap:wrap;}
+  .react-pill{display:inline-flex;align-items:center;gap:5px;background:var(--elevated);border:1px solid var(--line);
+    border-radius:999px;padding:5px 10px;font-size:13px;font-weight:600;color:var(--muted);transition:.12s;}
+  .react-pill.mine{background:var(--accent-soft);border-color:oklch(0.85 0.18 130 / .4);color:var(--text);}
+  .react-pill .n{font-size:12px;}
+  .react-add{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line);background:var(--elevated);}
+  .react-act{margin-left:auto;display:flex;gap:2px;}
+  .act-btn{display:flex;align-items:center;gap:5px;color:var(--dim);font-size:12.5px;font-weight:600;padding:6px 8px;border-radius:8px;}
+  .act-btn:active{background:var(--elevated);}
+
+  /* replies */
+  .replies{margin-top:11px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:9px;}
+  .reply{display:flex;gap:8px;align-items:flex-start;}
+  .reply .rb{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:7px 11px;font-size:13px;line-height:1.35;}
+  .reply .rb b{font-weight:700;}
+  .reply-input{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .reply-input input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--text);font-size:13.5px;outline:none;}
+  .reply-input input:focus{border-color:var(--line2);}
+  .reply-send{color:var(--accent);font-weight:700;font-size:13.5px;padding:6px;}
+
+  /* react tray (popover) */
+  .tray{position:fixed;z-index:55;background:var(--elevated);border:1px solid var(--line2);border-radius:999px;
+    padding:7px 10px;display:flex;gap:5px;box-shadow:0 12px 34px rgba(0,0,0,.5);}
+  .tray button{font-size:23px;line-height:1;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;transition:transform .12s;}
+  .tray button:active{transform:scale(1.25);}
+
+  /* ── SECTION / LIST ────────────────────────────────────────────── */
+  .sec-title{font-size:13px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin:18px 18px 10px;}
+  .row{display:flex;align-items:center;gap:12px;padding:11px 18px;transition:.15s;}
+  .row:active{background:var(--surface);}
+  .row .ti{flex:1;min-width:0;}
+  .row .ti .t{font-size:14.5px;font-weight:600;}
+  .row .ti .s{font-size:12.5px;color:var(--muted);margin-top:1px;}
+
+  /* circle card */
+  .circle-card{display:flex;align-items:center;gap:13px;padding:11px 14px;background:var(--surface);border:1px solid var(--line);
+    border-radius:16px;margin:0 14px 11px;transition:.15s;}
+  .circle-card:active{background:var(--elevated);}
+  .circle-cover{width:54px;height:54px;border-radius:14px;flex-shrink:0;display:grid;place-items:center;font-size:24px;}
+  .circle-card .ci{flex:1;min-width:0;}
+  .circle-card .ci .t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .circle-card .ci .s{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .stack{display:flex;}
+  .stack .avatar{box-shadow:0 0 0 2px var(--surface);}
+  .stack .avatar:not(:first-child){margin-left:-9px;}
+
+  /* search */
+  .searchbar{margin:6px 18px 14px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:14px;padding:11px 14px;}
+  .searchbar input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:15px;}
+  .searchbar input::placeholder{color:var(--dim);}
+
+  /* profile */
+  .prof-head{display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 18px 8px;}
+  .prof-head .name{font-size:24px;font-weight:800;margin:14px 0 3px;letter-spacing:-.5px;}
+  .prof-head .handle{font-size:14px;color:var(--muted);}
+  .prof-head .bio{font-size:14px;color:#d4d4d8;line-height:1.5;margin:13px 0 0;max-width:330px;}
+  .prof-stats{display:flex;justify-content:center;gap:30px;margin:18px 0 6px;}
+  .prof-stats .st{text-align:center;}
+  .prof-stats .st .num{font-size:19px;font-weight:800;}
+  .prof-stats .st .lbl{font-size:11.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+  /* ── BOTTOM NAV ────────────────────────────────────────────────── */
+  .tabbar{position:absolute;bottom:0;left:0;right:0;z-index:40;padding:8px 0 calc(20px + var(--safe-bottom));
+    background:linear-gradient(to top,#0b0b0cFA 62%,transparent);backdrop-filter:blur(16px);}
+  .tabs{display:flex;justify-content:space-around;align-items:center;padding:0 6px;}
+  .tab{background:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--dim);padding:6px 10px;position:relative;}
+  .tab.active{color:var(--text);}
+  .tab .lbl{font-size:10.5px;font-weight:600;}
+  .tab .nbadge{position:absolute;top:2px;right:14px;width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .fab{width:52px;height:52px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;
+    box-shadow:0 8px 24px oklch(0.85 0.18 130 / .35);transform:translateY(-6px);transition:transform .14s;}
+  .fab:active{transform:translateY(-6px) scale(.92);}
+
+  /* now playing */
+  .nowbar{position:absolute;left:8px;right:8px;bottom:calc(78px + var(--safe-bottom));z-index:38;
+    display:flex;align-items:center;gap:11px;background:rgba(29,29,32,.92);backdrop-filter:blur(20px);
+    border:1px solid var(--line2);border-radius:14px;padding:8px 12px 8px 8px;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .nowbar .ti{flex:1;min-width:0;}
+  .nowbar .ti .t{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nowbar .ti .a{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .nowbar .prog{position:absolute;left:12px;right:12px;bottom:3px;height:2px;background:var(--line2);border-radius:2px;overflow:hidden;}
+  .nowbar .prog i{display:block;height:100%;background:var(--accent);width:38%;}
+
+  /* ── SHEET / MODAL ─────────────────────────────────────────────── */
+  .scrim{position:absolute;inset:0;z-index:70;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);animation:fade .2s;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:71;background:var(--surface);
+    border-radius:22px 22px 0 0;border-top:1px solid var(--line2);padding:8px 18px calc(26px + var(--safe-bottom));animation:up .26s cubic-bezier(.2,.8,.2,1);max-height:88vh;overflow-y:auto;}
+  .grip{width:38px;height:4px;border-radius:4px;background:var(--line2);margin:6px auto 14px;}
+  .sheet h3{font-size:19px;font-weight:800;margin:2px 0 4px;letter-spacing:-.4px;}
+  .sheet .hint{font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.45;}
+  .seg{display:flex;gap:8px;margin-bottom:14px;}
+  .seg button{flex:1;padding:11px;border-radius:12px;background:var(--bg);border:1px solid var(--line);font-size:13.5px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px;transition:.15s;}
+  .seg button.on{background:var(--accent-soft);border-color:oklch(0.85 0.18 130 / .5);color:var(--text);}
+  .seg button .d{font-size:11px;font-weight:500;color:var(--dim);}
+  .seg button.on .d{color:var(--muted);}
+  .composer-caption{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:13px;color:var(--text);
+    font-size:14.5px;resize:none;outline:none;min-height:64px;margin-bottom:14px;}
+  .composer-caption:focus{border-color:var(--line2);}
+  .btn-primary{width:100%;background:var(--accent);color:var(--accent-text);font-weight:800;font-size:15.5px;padding:15px;border-radius:14px;transition:transform .12s;}
+  .btn-primary:active{transform:scale(.98);}
+  .btn-primary:disabled{opacity:.4;}
+  .pick{display:flex;align-items:center;gap:11px;padding:9px;border-radius:12px;transition:.12s;}
+  .pick:active{background:var(--elevated);}
+  .pick.sel{background:var(--accent-soft);}
+  .field-label{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;margin:4px 0 9px;}
+  .text-field{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:13px;color:var(--text);font-size:15px;outline:none;margin-bottom:14px;}
+
+  /* toast */
+  .toast{position:absolute;left:50%;bottom:calc(150px + var(--safe-bottom));transform:translateX(-50%);z-index:80;
+    background:var(--elevated);border:1px solid var(--line2);color:var(--text);font-size:13.5px;font-weight:600;
+    padding:11px 18px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:fade .2s;white-space:nowrap;}
+
+  .empty{text-align:center;color:var(--dim);font-size:14px;padding:50px 30px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- LOGIN -->
+  <div id="login">
+    <svg class="logo venn" width="84" height="64" viewBox="0 0 84 64">
+      <circle cx="30" cy="32" r="22" stroke-width="3.2"/>
+      <circle cx="54" cy="32" r="22" stroke-width="3.2"/>
+    </svg>
+    <h1>Circles</h1>
+    <p class="sub">Share what you're listening to with the people who get it. Public, or just your circles.</p>
+    <button class="btn-spotify" onclick="login()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42a.62.62 0 01-.86.21c-2.35-1.44-5.3-1.76-8.79-.97a.625.625 0 11-.28-1.22c3.81-.87 7.08-.5 9.72 1.12.3.18.39.57.21.86zm1.22-2.72a.78.78 0 01-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 11-.45-1.49c3.64-1.1 8.16-.56 11.24 1.33.37.22.49.7.25 1.07zm.11-2.84c-3.23-1.92-8.55-2.1-11.63-1.16a.935.935 0 11-.54-1.79c3.54-1.07 9.42-.86 13.13 1.34a.936.936 0 01-.96 1.61z"/></svg>
+      Connect with Spotify
+    </button>
+    <div class="login-foot">A demo prototype — an original social-listening app concept, not affiliated with or a reproduction of Spotify. Spotify connection is simulated for this walkthrough.</div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main" class="hidden">
+    <div class="scroll" id="scroll">
+      <div id="view"></div>
+    </div>
+
+    <!-- now playing -->
+    <div class="nowbar hidden" id="nowbar" onclick="openNow()">
+      <div class="art" id="now-art" style="width:42px;height:42px;border-radius:9px;"></div>
+      <div class="ti"><div class="t" id="now-t"></div><div class="a" id="now-a"></div></div>
+      <button class="icon-btn" onclick="event.stopPropagation();togglePlay()" id="now-play"></button>
+      <div class="prog"><i></i></div>
+    </div>
+
+    <!-- tab bar -->
+    <div class="tabbar">
+      <div class="tabs">
+        <button class="tab" data-tab="home" onclick="go('home')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
+          <span class="lbl">Home</span>
+        </button>
+        <button class="tab" data-tab="circles" onclick="go('circles')">
+          <span class="nbadge" id="circles-badge"></span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="8.5" cy="10" r="5"/><circle cx="15.5" cy="14" r="5"/></svg>
+          <span class="lbl">Circles</span>
+        </button>
+        <button class="fab" onclick="openComposer()">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="tab" data-tab="search" onclick="go('search')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span class="lbl">Search</span>
+        </button>
+        <button class="tab" data-tab="library" onclick="go('library')">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <span class="lbl">Library</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay"></div>
+  <div id="toast-host"></div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   DATA LAYER
+   Shapes mirror what a real build would receive:
+   • SONGS / NOW  → Spotify Web API (track objects, currently-playing)
+   • FRIENDS / CIRCLES / FEED / NOTIFS → Circles' own backend (social graph)
+   Swap these arrays for fetch() calls and the UI is unchanged.
+════════════════════════════════════════════════════════════════ */
+const ME = {
+  id:'me', name:'Vivek Arora', handle:'vivek', color:'oklch(0.85 0.18 130)',
+  bio:'Late-night listener. Lo-fi, indie, and whatever Studio Hours is into this week.'
+};
+
+const ART = [
+  'linear-gradient(135deg,#f472b6 0%,#7c3aed 100%)',
+  'linear-gradient(135deg,#22d3ee 0%,#1e3a8a 100%)',
+  'linear-gradient(135deg,#fb923c 0%,#7f1d1d 100%)',
+  'linear-gradient(135deg,#a3e635 0%,#14532d 100%)',
+  'linear-gradient(135deg,#e879f9 0%,#4c1d95 100%)',
+  'linear-gradient(135deg,#facc15 0%,#78350f 100%)',
+  'linear-gradient(135deg,#60a5fa 0%,#065f46 100%)',
+  'linear-gradient(135deg,#f87171 0%,#18181b 100%)',
+  'linear-gradient(135deg,#34d399 0%,#0f172a 100%)',
+  'linear-gradient(135deg,#fde047 0%,#be185d 100%)'
+];
+
+const SONGS = [
+  {id:'s1', title:'Midnight Static', artist:'Nova Reyes',   album:'Lowlight',     art:0, dur:214},
+  {id:'s2', title:'Paper Lanterns',  artist:'Kin & Co.',    album:'Fieldwork',    art:1, dur:187},
+  {id:'s3', title:'Soft Concrete',   artist:'Halia',        album:'Rooms',        art:2, dur:243},
+  {id:'s4', title:'Glass Animals',   artist:'Juno Parade',  album:'Youth Again',  art:3, dur:201},
+  {id:'s5', title:'Tidewater',       artist:'Moor',         album:'Coastal',      art:4, dur:256},
+  {id:'s6', title:'Neon Honey',      artist:'Sable Twin',   album:'After Hours',  art:5, dur:178},
+  {id:'s7', title:'Drive Slow',      artist:'Kite Festival',album:'Open Road',    art:6, dur:223},
+  {id:'s8', title:'Low Sun',         artist:'Fern Hollow',  album:'Quiet Fires',  art:7, dur:194},
+  {id:'s9', title:'Petrichor',       artist:'Ada Linde',    album:'First Rain',   art:8, dur:232},
+  {id:'s10',title:'After Hours',     artist:'Marlow',       album:'Night Bus',    art:9, dur:210}
+];
+
+const FRIENDS = [
+  {id:'u1', name:'Emily Park', handle:'emilyp', color:'oklch(0.75 0.17 10)'},
+  {id:'u2', name:'Jason Liu',  handle:'jasonl', color:'oklch(0.75 0.14 240)'},
+  {id:'u3', name:'Ayesha R.',  handle:'ayesha', color:'oklch(0.72 0.16 300)'},
+  {id:'u4', name:'Marco D.',   handle:'marcod', color:'oklch(0.8 0.14 70)'},
+  {id:'u5', name:'Priya S.',   handle:'priyas', color:'oklch(0.78 0.16 160)'},
+  {id:'u6', name:'Leo Tan',    handle:'leot',   color:'oklch(0.72 0.14 30)'},
+  {id:'u7', name:'Nora B.',    handle:'norab',  color:'oklch(0.75 0.14 200)'}
+];
+
+let CIRCLES = [
+  {id:'c1', name:'Studio Hours',    emoji:'🎧', privacy:'private', members:['me','u1','u2','u3'],
+   cover:'linear-gradient(135deg,oklch(0.75 0.18 130),oklch(0.5 0.2 180))', last:'2m'},
+  {id:'c2', name:'Sunday Sessions', emoji:'☕', privacy:'private', members:['me','u4','u5'],
+   cover:'linear-gradient(135deg,oklch(0.8 0.14 70),oklch(0.55 0.2 20))', last:'18m'},
+  {id:'c3', name:'The Basement',    emoji:'🔊', privacy:'private', members:['me','u1','u2','u6','u7'],
+   cover:'linear-gradient(135deg,oklch(0.72 0.16 300),oklch(0.4 0.2 260))', last:'1h'}
+];
+// 'public' is a virtual circle: shares visible to everyone
+const PUBLIC = {id:'public', name:'Public', emoji:'🌐'};
+
+let FEED = [
+  {id:'p1', circleId:'c1', userId:'u1', songId:'s1', time:'2m',
+   caption:'literally my whole week in one song',
+   reactions:{'🔥':['u2','me'],'❤️':['u3']},
+   replies:[{userId:'u2', text:'the bridge??? unreal', time:'1m'}]},
+  {id:'p2', circleId:'public', userId:'u4', songId:'s7', time:'9m',
+   caption:'windows down kind of evening',
+   reactions:{'🔥':['u5'],'😮':['u1']}, replies:[]},
+  {id:'p3', circleId:'c1', userId:'u3', songId:'s3', time:'14m',
+   caption:null, reactions:{'🫶':['u1']}, replies:[]},
+  {id:'p4', circleId:'c3', userId:'u2', songId:'s6', time:'41m',
+   caption:'late night coding fuel 🌙',
+   reactions:{'🔥':['u1','u3'],'😂':['me']},
+   replies:[{userId:'u1', text:'adding to my focus playlist', time:'30m'},
+            {userId:'u3', text:'oh this slaps', time:'20m'}]},
+  {id:'p5', circleId:'public', userId:'u6', songId:'s9', time:'2h',
+   caption:'rainy day on repeat', reactions:{'❤️':['u7','u2']}, replies:[]},
+  {id:'p6', circleId:'c3', userId:'u2', songId:'s9', time:'3h',
+   caption:null, reactions:{'❤️':['u1','u3','me']}, replies:[]}
+];
+
+let NOTIFS = [
+  {id:'n1', type:'share',    userId:'u1', text:'shared Midnight Static in Studio Hours', time:'2m', unread:true},
+  {id:'n2', type:'reaction', userId:'u2', text:'reacted 🔥 to your share of Low Sun',     time:'12m',unread:true},
+  {id:'n3', type:'reply',    userId:'u3', text:'replied: "this is a vibe"',               time:'1h', unread:false},
+  {id:'n4', type:'invite',   userId:'u5', text:'invited you to Sunday Sessions',          time:'4h', unread:false}
+];
+
+// "your" recent shares + top this month (Library)
+const MY_SHARES = [
+  {songId:'s8', circleId:'c1', time:'1d'},
+  {songId:'s5', circleId:'public', time:'2d'},
+  {songId:'s2', circleId:'c2', time:'4d'}
+];
+const MY_TOP = ['s1','s9','s6','s3','s5'];
+
+const REACTS = ['❤️','🔥','😂','😮','🫶'];
+
+/* ── lookups ──────────────────────────────────────────────── */
+const song = id => SONGS.find(s=>s.id===id);
+const user = id => id==='me' ? ME : FRIENDS.find(f=>f.id===id);
+const circle = id => id==='public' ? PUBLIC : CIRCLES.find(c=>c.id===id);
+const initials = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── small view helpers ───────────────────────────────────── */
+function avatar(id, size=36){
+  const u = user(id);
+  return `<div class="avatar" style="width:${size}px;height:${size}px;background:${u.color};font-size:${size*0.38}px">${initials(u.name)}</div>`;
+}
+function art(id, size=56, r=10){
+  const s = song(id);
+  return `<div class="art" style="width:${size}px;height:${size}px;border-radius:${r}px;background:${ART[s.art]}"></div>`;
+}
+function fmtReacts(p){
+  const keys = Object.keys(p.reactions).filter(k=>p.reactions[k].length);
+  return keys;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   APP STATE
+════════════════════════════════════════════════════════════════ */
+let state = { view:'home', circleFilter:'all', search:'', openCircle:null };
+
+function login(){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('main').classList.remove('hidden');
+  go('home');
+  setTimeout(()=>playSong('s1', false), 400);
+}
+
+function go(v){
+  state.view = v;
+  state.openCircle = null;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===v));
+  document.getElementById('scroll').scrollTop = 0;
+  render();
+}
+
+function render(){
+  const v = document.getElementById('view');
+  if(state.openCircle){ v.innerHTML = renderCircleDetail(state.openCircle); return; }
+  switch(state.view){
+    case 'home':     v.innerHTML = renderHome(); break;
+    case 'circles':  v.innerHTML = renderCircles(); break;
+    case 'search':   v.innerHTML = renderSearch(); break;
+    case 'library':  v.innerHTML = renderLibrary(); break;
+    case 'notifs':   v.innerHTML = renderNotifs(); break;
+  }
+  updateBadge();
+}
+
+function updateBadge(){
+  const unread = NOTIFS.some(n=>n.unread);
+  const b = document.getElementById('circles-badge');
+  if(b) b.style.display = unread ? 'block':'none';
+}
+
+/* ── topbar ───────────────────────────────────────────────── */
+function topbar(title, brand=false){
+  return `<div class="topbar">
+    ${brand
+      ? `<div class="brand"><svg class="venn" width="30" height="22" viewBox="0 0 84 64"><circle cx="30" cy="32" r="22" stroke-width="4"/><circle cx="54" cy="32" r="22" stroke-width="4"/></svg>Circles</div>`
+      : `<h2>${title}</h2>`}
+    <div class="icons">
+      <button class="icon-btn" onclick="go('notifs')">
+        ${NOTIFS.some(n=>n.unread)?'<span class="dot"></span>':''}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   HOME FEED
+════════════════════════════════════════════════════════════════ */
+function renderHome(){
+  // circle filter chips
+  const chips = [{id:'all',name:'All',emoji:'✨'},{id:'public',name:'Public',emoji:'🌐'},...CIRCLES]
+    .map(c=>`<button class="chip ${state.circleFilter===c.id?'active':''}" onclick="setFilter('${c.id}')">
+       <span>${c.emoji||''}</span>${c.name}</button>`).join('');
+
+  let posts = FEED.slice();
+  if(state.circleFilter!=='all') posts = posts.filter(p=>p.circleId===state.circleFilter);
+
+  const body = posts.length
+    ? `<div class="feed">${posts.map(postCard).join('')}</div>`
+    : `<div class="empty">Nothing here yet.<br>Share a track to get the circle going.</div>`;
+
+  return topbar('', true) + `<div class="chips">${chips}</div>` + body;
+}
+
+function setFilter(id){ state.circleFilter=id; render(); }
+
+function postCard(p){
+  const u = user(p.userId), s = song(p.songId), c = circle(p.circleId);
+  const reactKeys = fmtReacts(p);
+  const myReact = reactKeys.find(k=>p.reactions[k].includes('me'));
+  const pills = reactKeys.map(k=>{
+    const mine = p.reactions[k].includes('me');
+    return `<button class="react-pill ${mine?'mine':''}" onclick="toggleReact('${p.id}','${k}')">${k}<span class="n">${p.reactions[k].length}</span></button>`;
+  }).join('');
+
+  const replies = p.replies.length ? `<div class="replies">${p.replies.map(r=>`
+    <div class="reply">${avatar(r.userId,26)}
+      <div class="rb"><b>${esc(user(r.userId).name)}</b> ${esc(r.text)}</div>
+    </div>`).join('')}</div>` : '';
+
+  return `<div class="post" id="post-${p.id}">
+    <div class="post-head">
+      ${avatar(p.userId,40)}
+      <div class="post-meta">
+        <div class="who">${esc(u.name)}</div>
+        <div class="sub">@${u.handle} · ${p.time}
+          <span class="badge-circle">${c.emoji||'🌐'} ${c.name}</span>
+        </div>
+      </div>
+    </div>
+    ${p.caption?`<p class="caption">${esc(p.caption)}</p>`:''}
+    <div class="track" onclick="playSong('${s.id}')">
+      ${art(s.id,54,9)}
+      <div class="ti"><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}</div></div>
+      <div class="play-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>
+    <div class="react-row">
+      ${pills}
+      <button class="react-add" onclick="openTray(event,'${p.id}')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 14s1 1.5 3 1.5S15 14 15 14M9 9h.01M15 9h.01"/></svg>
+      </button>
+      <div class="react-act">
+        <button class="act-btn" onclick="focusReply('${p.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.8-6.3A8.4 8.4 0 1121 11.5z"/></svg>
+          ${p.replies.length||''}
+        </button>
+        <button class="act-btn" onclick="sharePost('${p.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
+        </button>
+      </div>
+    </div>
+    ${replies}
+    <div class="reply-input">
+      ${avatar('me',26)}
+      <input id="reply-${p.id}" placeholder="Add a reply…" onkeydown="if(event.key==='Enter')addReply('${p.id}')">
+      <button class="reply-send" onclick="addReply('${p.id}')">Send</button>
+    </div>
+  </div>`;
+}
+
+/* ── reactions ────────────────────────────────────────────── */
+function toggleReact(pid, emoji){
+  const p = FEED.find(x=>x.id===pid);
+  if(!p.reactions[emoji]) p.reactions[emoji]=[];
+  const arr = p.reactions[emoji];
+  const i = arr.indexOf('me');
+  // remove my reaction from any other emoji first
+  Object.keys(p.reactions).forEach(k=>{ if(k!==emoji){ const j=p.reactions[k].indexOf('me'); if(j>-1)p.reactions[k].splice(j,1);} });
+  if(i>-1) arr.splice(i,1); else arr.push('me');
+  Object.keys(p.reactions).forEach(k=>{ if(!p.reactions[k].length) delete p.reactions[k]; });
+  closeTray(); render();
+}
+function openTray(ev, pid){
+  ev.stopPropagation();
+  closeTray();
+  const r = ev.currentTarget.getBoundingClientRect();
+  const t = document.createElement('div');
+  t.className='tray'; t.id='tray';
+  t.innerHTML = REACTS.map(e=>`<button onclick="toggleReact('${pid}','${e}')">${e}</button>`).join('');
+  document.getElementById('overlay').appendChild(t);
+  const top = Math.max(8, r.top - 56);
+  t.style.top = top+'px';
+  t.style.left = Math.min(r.left-10, window.innerWidth-220)+'px';
+  setTimeout(()=>document.addEventListener('click', closeTray, {once:true}),0);
+}
+function closeTray(){ const t=document.getElementById('tray'); if(t)t.remove(); }
+
+/* ── replies ──────────────────────────────────────────────── */
+function focusReply(pid){ const el=document.getElementById('reply-'+pid); if(el){el.scrollIntoView({block:'center'});el.focus();} }
+function addReply(pid){
+  const el=document.getElementById('reply-'+pid); const txt=el.value.trim(); if(!txt)return;
+  FEED.find(x=>x.id===pid).replies.push({userId:'me',text:txt,time:'now'});
+  render(); toast('Reply added');
+}
+function sharePost(pid){ toast('Link copied'); }
+
+/* ════════════════════════════════════════════════════════════════
+   CIRCLES
+════════════════════════════════════════════════════════════════ */
+function renderCircles(){
+  const cards = CIRCLES.map(c=>{
+    const others = c.members.filter(m=>m!=='me').slice(0,4);
+    const count = FEED.filter(p=>p.circleId===c.id).length;
+    return `<div class="circle-card" onclick="openCircle('${c.id}')">
+      <div class="circle-cover" style="background:${c.cover}">${c.emoji}</div>
+      <div class="ci">
+        <div class="t">${esc(c.name)} <span style="font-size:12px;color:var(--dim)">🔒</span></div>
+        <div class="s">${c.members.length} members · ${count} share${count!==1?'s':''} · ${c.last}</div>
+      </div>
+      <div class="stack">${others.map(m=>avatar(m,28)).join('')}</div>
+    </div>`;
+  }).join('');
+
+  return topbar('Circles') +
+    `<div style="padding:0 14px 4px"><button class="circle-card" style="width:calc(100% - 0px);justify-content:center;color:var(--accent);font-weight:700;margin:0 0 14px" onclick="openCreate()">
+       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> New Circle
+    </button></div>` +
+    cards;
+}
+
+function openCircle(id){ state.openCircle=id; document.getElementById('scroll').scrollTop=0; render(); }
+
+function renderCircleDetail(id){
+  const c = circle(id);
+  const posts = FEED.filter(p=>p.circleId===id);
+  const back = `<div class="topbar"><button class="icon-btn" onclick="state.openCircle=null;render()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button><h2 style="font-size:19px">${esc(c.name)}</h2><div style="width:40px"></div></div>`;
+
+  const header = `<div style="padding:6px 18px 14px;display:flex;align-items:center;gap:14px">
+      <div class="circle-cover" style="width:64px;height:64px;font-size:30px;background:${c.cover}">${c.emoji}</div>
+      <div>
+        <div style="font-size:20px;font-weight:800">${esc(c.name)}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:3px">Private circle · ${c.members.length} members</div>
+        <div class="stack" style="margin-top:8px">${c.members.map(m=>avatar(m,26)).join('')}</div>
+      </div>
+    </div>`;
+
+  const body = posts.length ? `<div class="feed">${posts.map(postCard).join('')}</div>`
+    : `<div class="empty">No shares in ${esc(c.name)} yet.</div>`;
+  return back + header + body;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SEARCH
+════════════════════════════════════════════════════════════════ */
+function renderSearch(){
+  const q = state.search.toLowerCase();
+  const songs = q ? SONGS.filter(s=>(s.title+s.artist+s.album).toLowerCase().includes(q)) : SONGS.slice(0,6);
+  const people = q ? FRIENDS.filter(f=>(f.name+f.handle).toLowerCase().includes(q)) : FRIENDS.slice(0,4);
+
+  const songRows = songs.map(s=>`<div class="row" onclick="playSong('${s.id}')">
+      ${art(s.id,48,9)}
+      <div class="ti"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)} · ${esc(s.album)}</div></div>
+      <button class="react-add" onclick="event.stopPropagation();quickShare('${s.id}')" title="Share">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>`).join('');
+
+  const peopleRows = people.map(f=>`<div class="row">
+      ${avatar(f.id,44)}
+      <div class="ti"><div class="t">${esc(f.name)}</div><div class="s">@${f.handle}</div></div>
+    </div>`).join('');
+
+  return topbar('Search') +
+    `<div class="searchbar">
+       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+       <input id="search-input" placeholder="Songs, artists, friends…" value="${esc(state.search)}" oninput="onSearch(this.value)">
+     </div>` +
+    `<div class="sec-title">${q?'Songs':'Trending songs'}</div>${songRows||'<div class="empty">No songs found.</div>'}` +
+    `<div class="sec-title">People</div>${peopleRows||'<div class="empty">No people found.</div>'}`;
+}
+function onSearch(v){
+  state.search=v;
+  const q=v.toLowerCase();
+  const songs = q ? SONGS.filter(s=>(s.title+s.artist+s.album).toLowerCase().includes(q)) : SONGS.slice(0,6);
+  const people = q ? FRIENDS.filter(f=>(f.name+f.handle).toLowerCase().includes(q)) : FRIENDS.slice(0,4);
+  // re-render then refocus the input
+  render();
+  const inp=document.getElementById('search-input'); if(inp){inp.focus(); inp.setSelectionRange(v.length,v.length);}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LIBRARY / PROFILE
+════════════════════════════════════════════════════════════════ */
+function renderLibrary(){
+  const top = MY_TOP.map((id,i)=>{const s=song(id);return `<div class="row">
+      <div style="width:22px;text-align:center;font-weight:800;color:var(--dim);font-size:14px">${i+1}</div>
+      ${art(id,46,9)}
+      <div class="ti"><div class="t">${esc(s.title)}</div><div class="s">${esc(s.artist)}</div></div>
+      <button class="react-add" onclick="playSong('${id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+    </div>`;}).join('');
+
+  const shares = MY_SHARES.map(m=>{const s=song(m.songId),c=circle(m.circleId);return `<div class="row">
+      ${art(m.songId,46,9)}
+      <div class="ti"><div class="t">${esc(s.title)}</div><div class="s">${c.emoji||'🌐'} ${c.name} · ${m.time}</div></div>
+    </div>`;}).join('');
+
+  return topbar('Library') +
+    `<div class="prof-head">
+      <div class="avatar" style="width:84px;height:84px;font-size:32px;background:${ME.color}">${initials(ME.name)}</div>
+      <div class="name">${esc(ME.name)}</div>
+      <div class="handle">@${ME.handle}</div>
+      <div class="bio">${esc(ME.bio)}</div>
+      <div class="prof-stats">
+        <div class="st"><div class="num">${CIRCLES.length}</div><div class="lbl">Circles</div></div>
+        <div class="st"><div class="num">${FRIENDS.length}</div><div class="lbl">Friends</div></div>
+        <div class="st"><div class="num">${MY_SHARES.length}</div><div class="lbl">Shares</div></div>
+      </div>
+    </div>` +
+    `<div class="sec-title">Top songs this month</div>${top}` +
+    `<div class="sec-title">Your recent shares</div>${shares}`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NOTIFICATIONS
+════════════════════════════════════════════════════════════════ */
+function renderNotifs(){
+  NOTIFS.forEach(n=>n.unread=false); updateBadge();
+  const back = `<div class="topbar"><button class="icon-btn" onclick="go('home')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button><h2 style="font-size:20px">Activity</h2><div style="width:40px"></div></div>`;
+  const rows = NOTIFS.map(n=>`<div class="row">
+      ${avatar(n.userId,40)}
+      <div class="ti"><div class="t" style="font-weight:600"><b>${esc(user(n.userId).name)}</b> ${esc(n.text)}</div><div class="s">${n.time}</div></div>
+      ${n.type==='invite'?`<button class="react-add" style="width:auto;padding:0 14px;border-radius:999px;color:var(--accent);font-weight:700;font-size:13px">Join</button>`:''}
+    </div>`).join('');
+  return back + rows;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NOW PLAYING (mirrors Spotify currently-playing)
+════════════════════════════════════════════════════════════════ */
+let playing=false, current=null;
+function playSong(id, start=true){
+  current=id; playing=start;
+  const s=song(id);
+  document.getElementById('nowbar').classList.remove('hidden');
+  document.getElementById('now-art').style.background=ART[s.art];
+  document.getElementById('now-t').textContent=s.title;
+  document.getElementById('now-a').textContent=s.artist;
+  updatePlayIcon();
+  if(start) toast('▶ '+s.title);
+}
+function togglePlay(){ playing=!playing; updatePlayIcon(); }
+function updatePlayIcon(){
+  document.getElementById('now-play').innerHTML = playing
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>'
+    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+}
+function openNow(){ if(current) toast('Now playing: '+song(current).title); }
+
+/* ════════════════════════════════════════════════════════════════
+   COMPOSER (share a track)
+════════════════════════════════════════════════════════════════ */
+let composer = { songId:null, target:'public' };
+function openComposer(prefill){
+  composer = { songId: prefill||current||'s1', target:'public' };
+
+  const songList = SONGS.map(s=>`<div class="pick" data-song="${s.id}" onclick="pickSong('${s.id}')">
+      ${art(s.id,44,9)}
+      <div class="ti" style="flex:1"><div class="t" style="font-size:14px;font-weight:700">${esc(s.title)}</div><div class="a" style="font-size:12.5px;color:var(--muted)">${esc(s.artist)}</div></div>
+      <div class="check" style="color:var(--accent)"></div>
+    </div>`).join('');
+
+  openSheet(`
+    <h3>Share a track</h3>
+    <p class="hint">Pick something you're into, then choose who sees it.</p>
+    <div class="field-label">Who can see this</div>
+    <div class="seg" id="seg-targets">
+      <button class="on" data-id="public" onclick="pickTarget('public')"><span style="font-size:18px">🌐</span>Public<span class="d">Everyone</span></button>
+      ${CIRCLES.map(c=>`<button data-id="${c.id}" onclick="pickTarget('${c.id}')"><span style="font-size:18px">${c.emoji}</span>${c.name}<span class="d">${c.members.length} ppl</span></button>`).join('')}
+    </div>
+    <div class="field-label">Track</div>
+    <div style="max-height:188px;overflow-y:auto;margin-bottom:14px">${songList}</div>
+    <textarea class="composer-caption" id="composer-cap" placeholder="Say something about it… (optional)"></textarea>
+    <button class="btn-primary" onclick="submitShare()">Share</button>
+  `);
+  setTimeout(()=>highlightSong(),0);
+}
+function pickTarget(id){
+  composer.target=id;
+  document.querySelectorAll('#seg-targets button').forEach(b=>b.classList.toggle('on', b.dataset.id===id));
+}
+function pickSong(id){ composer.songId=id; highlightSong(); }
+function highlightSong(){
+  document.querySelectorAll('.pick').forEach(p=>{
+    const on = p.dataset.song===composer.songId;
+    p.classList.toggle('sel', on);
+    p.querySelector('.check').innerHTML = on ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>' : '';
+  });
+}
+function submitShare(){
+  const cap = document.getElementById('composer-cap').value.trim();
+  FEED.unshift({
+    id:'p'+Date.now(), circleId:composer.target, userId:'me', songId:composer.songId, time:'now',
+    caption: cap||null, reactions:{}, replies:[]
+  });
+  closeSheet();
+  state.view='home'; state.circleFilter='all'; state.openCircle=null;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab==='home'));
+  render();
+  document.getElementById('scroll').scrollTop=0;
+  toast('Shared to '+circle(composer.target).name);
+}
+function quickShare(id){ openComposer(id); }
+
+/* ── create circle ────────────────────────────────────────── */
+let newCircle = { name:'', emoji:'🎵', members:[] };
+function openCreate(){
+  newCircle = { name:'', emoji:'🎵', members:[] };
+  const emojis=['🎵','🎧','🔊','☕','🌙','🔥','✨','🎸','🪩','🎤'];
+  const people = FRIENDS.map(f=>`<div class="pick" data-mem="${f.id}" onclick="toggleMember('${f.id}')">
+      ${avatar(f.id,40)}<div class="ti" style="flex:1"><div class="t" style="font-size:14px;font-weight:600">${esc(f.name)}</div><div class="a" style="font-size:12px;color:var(--muted)">@${f.handle}</div></div>
+      <div class="check" data-check="${f.id}" style="color:var(--accent)"></div>
+    </div>`).join('');
+  openSheet(`
+    <h3>New Circle</h3>
+    <p class="hint">A private space to share music with a few people.</p>
+    <div class="field-label">Name</div>
+    <input class="text-field" id="nc-name" placeholder="e.g. Roadtrip Crew" oninput="newCircle.name=this.value">
+    <div class="field-label">Icon</div>
+    <div class="chips" style="padding:0 0 16px">${emojis.map(e=>`<button class="chip" data-emoji="${e}" style="font-size:18px;${e===newCircle.emoji?'background:var(--accent);color:var(--accent-text)':''}" onclick="pickEmoji('${e}')">${e}</button>`).join('')}</div>
+    <div class="field-label">Invite friends</div>
+    <div style="max-height:210px;overflow-y:auto;margin-bottom:14px">${people}</div>
+    <button class="btn-primary" onclick="createCircle()">Create Circle</button>
+  `);
+}
+function pickEmoji(e){ newCircle.emoji=e; document.querySelectorAll('[data-emoji]').forEach(b=>{const on=b.dataset.emoji===e;b.style.background=on?'var(--accent)':'';b.style.color=on?'var(--accent-text)':'';}); }
+function toggleMember(id){
+  const i=newCircle.members.indexOf(id);
+  if(i>-1)newCircle.members.splice(i,1); else newCircle.members.push(id);
+  const chk=document.querySelector(`[data-check="${id}"]`);
+  const pick=document.querySelector(`[data-mem="${id}"]`);
+  const on=newCircle.members.includes(id);
+  pick.classList.toggle('sel',on);
+  chk.innerHTML = on?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>':'';
+}
+function createCircle(){
+  if(!newCircle.name.trim()){ toast('Give your circle a name'); return; }
+  const covers=['linear-gradient(135deg,oklch(0.75 0.18 130),oklch(0.5 0.2 180))','linear-gradient(135deg,oklch(0.72 0.16 300),oklch(0.4 0.2 260))','linear-gradient(135deg,oklch(0.8 0.14 70),oklch(0.55 0.2 20))'];
+  CIRCLES.push({ id:'c'+Date.now(), name:newCircle.name.trim(), emoji:newCircle.emoji, privacy:'private',
+    members:['me',...newCircle.members], cover:covers[CIRCLES.length%covers.length], last:'now' });
+  closeSheet(); go('circles'); toast('Circle created');
+}
+
+/* ── sheet plumbing ───────────────────────────────────────── */
+function openSheet(html){
+  const o=document.getElementById('overlay');
+  o.innerHTML=`<div class="scrim" onclick="closeSheet()"></div><div class="sheet" onclick="event.stopPropagation()"><div class="grip"></div>${html}</div>`;
+}
+function closeSheet(){ document.getElementById('overlay').innerHTML=''; }
+
+/* ── toast ────────────────────────────────────────────────── */
+let toastT;
+function toast(msg){
+  const host=document.getElementById('toast-host');
+  host.innerHTML=`<div class="toast">${esc(msg)}</div>`;
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>host.innerHTML='',1800);
+}
+</script>
+</body>
+</html>
