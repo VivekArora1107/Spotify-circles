@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS saved_tracks (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  track_id   TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  artist     TEXT NOT NULL,
+  album      TEXT,
+  art        TEXT,
+  url        TEXT,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, track_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_posts_circle ON posts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_posts_user   ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id);
@@ -93,7 +105,9 @@ CREATE INDEX IF NOT EXISTS idx_notif_user   ON notifications(user_id);
 for (const stmt of [
   'ALTER TABLE users ADD COLUMN auto_share INTEGER DEFAULT 0',
   'ALTER TABLE users ADD COLUMN last_auto_date TEXT',
-  'ALTER TABLE users ADD COLUMN last_auto_track TEXT'
+  'ALTER TABLE users ADD COLUMN last_auto_track TEXT',
+  'ALTER TABLE users ADD COLUMN pending_track TEXT',
+  'ALTER TABLE users ADD COLUMN pending_date TEXT'
 ]) {
   try { db.exec(stmt); } catch { /* column already exists */ }
 }

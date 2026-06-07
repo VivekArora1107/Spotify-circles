@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
 import { startAutoShareScheduler } from './autoshare.js';
 
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 8888;

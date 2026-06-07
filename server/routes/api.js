@@ -3,7 +3,6 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import db from '../db.js';
 import { spotifyGet, spotifyPut, validToken, normalizeTrack, normalizeArtist } from '../spotify.js';
-import { runAutoShareForUser } from '../autoshare.js';
 
 const router = Router();
 const uid = () => crypto.randomBytes(9).toString('base64url');
@@ -35,12 +34,22 @@ router.patch('/me', (req, res) => {
   res.json({ ok: true });
 });
 
-// Manually trigger the daily auto-share now (the "Share today's top track" button).
-router.post('/auto-share/run', async (req, res) => {
-  try {
-    const result = await runAutoShareForUser(req.user, { force: true });
-    res.json(result);
-  } catch (e) { res.status(502).json({ error: 'spotify_error', detail: String(e.message) }); }
+// Today's pending top-track suggestion (if any) — the app asks before sharing.
+router.get('/auto-share/pending', (req, res) => {
+  const day = new Date().toISOString().slice(0, 10);
+  if (req.user.pending_date === day && req.user.pending_track) {
+    try { return res.json({ track: JSON.parse(req.user.pending_track) }); }
+    catch { return res.json({ track: null }); }
+  }
+  res.json({ track: null });
+});
+
+// Clear today's suggestion (used after the user shares it OR skips it).
+router.post('/auto-share/dismiss', (req, res) => {
+  const day = new Date().toISOString().slice(0, 10);
+  db.prepare('UPDATE users SET pending_track=NULL, pending_date=?, last_auto_date=? WHERE id=?')
+    .run(day, day, req.user.id);
+  res.json({ ok: true });
 });
 
 // ── helper: hydrate a post row with author, reactions, replies ────
@@ -58,8 +67,10 @@ function hydrate(post, meId) {
   const circle = post.circle_id && post.circle_id !== 'public'
     ? db.prepare('SELECT id, name, emoji FROM circles WHERE id=?').get(post.circle_id)
     : { id: 'public', name: 'Public', emoji: '🌐' };
+  const saved = !!db.prepare('SELECT 1 FROM saved_tracks WHERE user_id=? AND track_id=?').get(meId, post.track_id);
   return {
     id: post.id, author, circle, caption: post.caption, created_at: post.created_at,
+    mine: post.user_id === meId, saved,
     track: { id: post.track_id, title: post.track_title, artist: post.track_artist, album: post.track_album, art: post.track_art, url: post.track_url },
     reactions, myReaction, replies
   };
@@ -109,6 +120,55 @@ router.post('/posts', (req, res) => {
     for (const m of members) notify(m.user_id, req.user.id, 'share', `shared ${track.title} in ${cname}`, id);
   }
   res.json(hydrate(db.prepare('SELECT * FROM posts WHERE id=?').get(id), req.user.id));
+});
+
+// ── edit a post (owner only): caption and/or audience ────────────
+router.patch('/posts/:id', (req, res) => {
+  const post = db.prepare('SELECT * FROM posts WHERE id=?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: 'not_found' });
+  if (post.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
+  const { caption, target } = req.body;
+  if (typeof caption === 'string') {
+    db.prepare('UPDATE posts SET caption=? WHERE id=?').run(caption.slice(0, 280) || null, post.id);
+  }
+  if (typeof target === 'string') {
+    let circleId = null;
+    if (target !== 'public') {
+      const member = db.prepare('SELECT 1 FROM circle_members WHERE circle_id=? AND user_id=?').get(target, req.user.id);
+      if (!member) return res.status(403).json({ error: 'not_a_member' });
+      circleId = target;
+    }
+    db.prepare('UPDATE posts SET circle_id=? WHERE id=?').run(circleId, post.id);
+  }
+  res.json(hydrate(db.prepare('SELECT * FROM posts WHERE id=?').get(post.id), req.user.id));
+});
+
+// ── delete a post (owner only) ───────────────────────────────────
+router.delete('/posts/:id', (req, res) => {
+  const post = db.prepare('SELECT * FROM posts WHERE id=?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: 'not_found' });
+  if (post.user_id !== req.user.id) return res.status(403).json({ error: 'not_owner' });
+  db.prepare('DELETE FROM posts WHERE id=?').run(post.id);   // reactions + replies cascade
+  res.json({ ok: true });
+});
+
+// ── saved tracks (bookmarks) ─────────────────────────────────────
+router.post('/saved', (req, res) => {
+  const t = req.body.track;
+  if (!t || !t.id) return res.status(400).json({ error: 'missing_track' });
+  const existing = db.prepare('SELECT 1 FROM saved_tracks WHERE user_id=? AND track_id=?').get(req.user.id, t.id);
+  if (existing) {
+    db.prepare('DELETE FROM saved_tracks WHERE user_id=? AND track_id=?').run(req.user.id, t.id);
+    return res.json({ saved: false });
+  }
+  db.prepare(`INSERT INTO saved_tracks (user_id, track_id, title, artist, album, art, url, created_at)
+              VALUES (?,?,?,?,?,?,?,?)`)
+    .run(req.user.id, t.id, t.title, t.artist, t.album || '', t.art || '', t.url || '', now());
+  res.json({ saved: true });
+});
+router.get('/saved', (req, res) => {
+  const rows = db.prepare('SELECT * FROM saved_tracks WHERE user_id=? ORDER BY created_at DESC').all(req.user.id);
+  res.json(rows.map(r => ({ id: r.track_id, title: r.title, artist: r.artist, album: r.album, art: r.art, url: r.url })));
 });
 
 // ── react (toggle / swap; one reaction per user per post) ─────────

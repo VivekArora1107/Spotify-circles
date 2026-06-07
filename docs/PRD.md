@@ -73,13 +73,15 @@ The app implements the following end-to-end:
 - **Home feed.** Reverse-chronological feed of shares, filterable by All / Public / each of your circles.
 - **Share composer.** Pick a track (search Spotify, or use what's currently playing), choose an audience (Public or a specific circle), add an optional caption, post.
 - **Reactions & replies.** One-tap emoji reactions (❤️ 🔥 😂 😮 🫶, swappable) and threaded text replies on every share.
-- **Circles.** Create private groups, invite other members, and target shares at them.
+- **Post management.** Authors can edit a share's caption and audience, or delete it (owner-only, with confirmation) — basic content control that any social product needs.
+- **Saved tracks (bookmarks).** Save any song from the feed to a personal list in your Library — a natural music-app affordance that increases return value for passive users (the "Ayesha" persona) who consume more than they post.
+- **Circles.** Create private groups, invite other members, and target shares at them. Circles can be created inline within the share flow (a "+ New circle" option in the composer), reducing friction to share with a brand-new group.
 - **Search (live Spotify).** Searches Spotify for **songs and artists**; tapping an artist shows their top tracks, each shareable. Also finds other people on Circles to follow.
 - **In-app playback (Premium).** Tap any track to play the full song inside Circles via Spotify's Web Playback SDK, with a play/pause bar — no need to leave the app.
 - **Now-playing bar.** Polls your Spotify currently-playing track; one tap shares it.
 - **Profile / Library.** Music bio (editable), your top tracks this month (from Spotify), and your recent shares.
 - **Follows & notifications.** Follow people; get notified for reactions, replies, circle invites, and new followers.
-- **Daily auto-share (automation).** An optional per-user toggle: once a day the server reads your #1 top track and posts it to Public automatically, using your stored Spotify token (works with no browser open). Posts at most once per day and skips reposting the same song. A "Share today's top track now" button triggers it on demand.
+- **Daily top-track suggestion (human-in-the-loop automation).** An optional per-user toggle: once a day the server reads your #1 top track and prepares it as a *suggestion* (using your stored Spotify token, so it works with no browser open). The app then **asks before sharing** — you confirm, choose the audience (Public or a circle), and add a caption. Nothing posts without your approval, and you can skip the day. This deliberately keeps a human in the loop rather than auto-posting, addressing the risk of unwanted automatic public shares.
 
 ### Representative user stories (Given / When / Then)
 

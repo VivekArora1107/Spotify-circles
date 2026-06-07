@@ -38,13 +38,15 @@ The target user is the socially-motivated listener (roughly 18–35) who already
 - **Home feed.** A feed of shares, filterable by **All / Public / each of your circles**.
 - **Share a track.** Search Spotify, or share what's **currently playing**; choose **Public** or a **private circle**; add an optional caption.
 - **React & reply.** One-tap emoji reactions (❤️ 🔥 😂 😮 🫶, swappable) and threaded text replies on every share.
-- **Circles.** Create private groups and invite other members; target shares at a specific circle.
+- **Edit & delete your posts.** An owner-only "⋯" menu on your shares lets you edit the caption and audience, or delete the share (with a confirmation).
+- **Save tracks (bookmarks).** Tap the bookmark on any share to save the song; find your saved tracks in **Library → Saved tracks**, ready to play or re-share.
+- **Circles.** Create private groups and invite other members; target shares at a specific circle. You can also **spin up a new circle right inside the share flow** — tap "+ New circle" in the composer and it's created and selected without leaving the screen.
 - **Live Spotify search.** Search **songs and artists** straight from Spotify. Tap an artist to see their **top tracks**, each ready to share. Also find other people on Circles to follow.
 - **▶ In-app playback (Premium).** Tap any track to play the **full song right inside Circles** via Spotify's Web Playback SDK, with a play/pause bar. Requires a Premium account (Spotify's rule for SDK playback).
 - **Now-playing bar.** Shows your current Spotify track; one tap shares it.
 - **Profile / Library.** Editable music bio, your **top tracks this month** (from Spotify), and your recent shares.
 - **Follows & notifications.** Follow people; get notified for reactions, replies, circle invites, and new followers.
-- **🤖 Daily auto-share.** An optional toggle: once a day the app automatically posts your **#1 top track** to Public, using your stored Spotify token (works even with no browser open). Posts at most once per day, skips reposting the same song, and has a **"Share today's top track now"** button to run it on demand.
+- **🤖 Daily top-track suggestion.** An optional toggle: once a day the app surfaces your **#1 top track** as a suggestion and **asks before anything is shared** — you confirm, **choose the audience** (Public or any circle), and add a caption. Nothing posts automatically. A **"Share my top track now"** button does the same on demand.
 
 Everything persists in a local SQLite database (`circles.db`), and multiple people can sign in and genuinely socialise (subject to Spotify's user limit — see [section 6](#6-the-spotify-rules-you-must-know-important)).
 

@@ -128,28 +128,57 @@ async function refreshBadge(){
    HOME
 ════════════════════════════════════════════════════════════════ */
 let circlesCache = [];
+let pendingSuggestion = null;
 async function renderHome(){
   circlesCache = await api('GET','/circles');
+  const [posts, pending] = await Promise.all([
+    api('GET','/feed?circle='+encodeURIComponent(state.circleFilter)),
+    api('GET','/auto-share/pending').catch(()=>({track:null}))
+  ]);
+  pendingSuggestion = pending.track || null;
   const chips = [{id:'all',name:'All',emoji:'✨'},{id:'public',name:'Public',emoji:'🌐'},...circlesCache]
     .map(c=>`<button class="chip ${state.circleFilter===c.id?'active':''}" onclick="setFilter('${c.id}')"><span>${c.emoji||''}</span>${esc(c.name)}</button>`).join('');
-  const posts = await api('GET','/feed?circle='+encodeURIComponent(state.circleFilter));
+  const banner = (pendingSuggestion && state.circleFilter==='all') ? suggestionBanner(pendingSuggestion) : '';
   const body = posts.length ? `<div class="feed">${posts.map(postCard).join('')}</div>`
     : `<div class="empty">Nothing here yet.<br>Tap ＋ to share the first track.</div>`;
-  viewEl().innerHTML = topbar('',true)+`<div class="chips">${chips}</div>`+body;
+  viewEl().innerHTML = topbar('',true)+`<div class="chips">${chips}</div>`+banner+body;
+}
+function suggestionBanner(t){
+  return `<div class="suggest">
+    <div class="suggest-top">🎧 Your top track today</div>
+    <div class="suggest-row">
+      ${artHTML(t,46,9)}
+      <div class="ti" style="flex:1;min-width:0"><div class="t" style="font-weight:700">${esc(t.title)}</div><div class="s" style="font-size:12.5px;color:var(--muted)">${esc(t.artist)}</div></div>
+    </div>
+    <div class="suggest-actions">
+      <button class="btn-pill ghost" onclick="skipSuggestion()">Skip</button>
+      <button class="btn-pill" onclick='shareSuggestion(${JSON.stringify(t).replace(/'/g,"&#39;")})'>Share it</button>
+    </div>
+  </div>`;
+}
+function shareSuggestion(t){ openComposer(t, {auto:true}); }
+async function skipSuggestion(){
+  try{ await api('POST','/auto-share/dismiss'); }catch{}
+  pendingSuggestion=null; render(); toast('Skipped for today');
 }
 function setFilter(id){ state.circleFilter=id; render(); }
 
+const POST_CACHE = {};
 function postCard(p){
+  POST_CACHE[p.id] = p;
+  const tj = JSON.stringify(p.track).replace(/'/g,"&#39;");
   const keys = Object.keys(p.reactions).filter(k=>p.reactions[k].length);
   const pills = keys.map(k=>`<button class="react-pill ${k===p.myReaction?'mine':''}" onclick="react('${p.id}','${k}')">${k}<span class="n">${p.reactions[k].length}</span></button>`).join('');
   const replies = p.replies.length?`<div class="replies">${p.replies.map(r=>`<div class="reply">${avatarHTML(r.user,26)}<div class="rb"><b>${esc(r.user.name)}</b> ${esc(r.text)}</div></div>`).join('')}</div>`:'';
+  const ownerMenu = p.mine ? `<button class="post-menu" onclick="openPostMenu('${p.id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button>`:'';
+  const bookmark = `<button class="act-btn ${p.saved?'saved':''}" onclick='toggleSave(${tj})'><svg width="16" height="16" viewBox="0 0 24 24" fill="${p.saved?'currentColor':'none'}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>`;
   return `<div class="post" id="post-${p.id}">
     <div class="post-head">${avatarHTML(p.author,40)}
       <div class="post-meta"><div class="who">${esc(p.author.name)}</div>
         <div class="sub">@${esc(p.author.handle)} · ${timeAgo(p.created_at)}<span class="badge-circle">${p.circle.emoji||'🌐'} ${esc(p.circle.name)}</span></div>
-      </div></div>
+      </div>${ownerMenu}</div>
     ${p.caption?`<p class="caption">${esc(p.caption)}</p>`:''}
-    <div class="track" onclick='playInApp(${JSON.stringify(p.track).replace(/'/g,"&#39;")})'>
+    <div class="track" onclick='playInApp(${tj})'>
       ${artHTML(p.track,54,9)}
       <div class="ti"><div class="t">${esc(p.track.title)}</div><div class="a">${esc(p.track.artist)}</div></div>
       <div class="play-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
@@ -157,6 +186,7 @@ function postCard(p){
     <div class="react-row">${pills}
       <button class="react-add" onclick="openTray(event,'${p.id}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 14s1 1.5 3 1.5S15 14 15 14M9 9h.01M15 9h.01"/></svg></button>
       <div class="react-act">
+        ${bookmark}
         <button class="act-btn" onclick="document.getElementById('reply-${p.id}').focus()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-11.7 7.7L3 21l1.8-6.3A8.4 8.4 0 1121 11.5z"/></svg>${p.replies.length||''}</button>
         <button class="act-btn" onclick="copyShare('${esc(p.track.url||'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg></button>
       </div>
@@ -184,6 +214,58 @@ function openTray(ev,pid){ ev.stopPropagation(); closeTray();
   setTimeout(()=>document.addEventListener('click',closeTray,{once:true}),0);
 }
 function closeTray(){ document.getElementById('tray')?.remove(); }
+
+/* ── owner menu: edit / delete a post ───────────────────────── */
+function openPostMenu(pid){
+  openSheet(`<h3>Your share</h3>
+    <button class="menu-item" onclick="editPost('${pid}')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+      Edit caption &amp; audience</button>
+    <button class="menu-item danger" onclick="confirmDelete('${pid}')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      Delete share</button>
+    <button class="btn-pill ghost" style="width:100%;margin-top:8px;padding:12px" onclick="closeSheet()">Cancel</button>`);
+}
+
+let editor = { id:null, target:'public' };
+async function editPost(pid){
+  const p = POST_CACHE[pid]; if(!p) return;
+  editor = { id:pid, target:p.circle.id };
+  if(!circlesCache.length){ try{ circlesCache = await api('GET','/circles'); }catch{} }
+  openSheet(`<h3>Edit share</h3>
+    <div class="field-label">Who can see this</div>
+    <div class="seg" id="edit-targets">${editTargetButtons()}</div>
+    <div class="field-label">Caption</div>
+    <textarea class="composer-caption" id="edit-cap" placeholder="Say something about it…">${esc(p.caption||'')}</textarea>
+    <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+    <button class="btn-pill ghost" style="width:100%;margin-top:10px;padding:12px" onclick="closeSheet()">Cancel</button>`);
+}
+function editTargetButtons(){
+  return `<button class="${editor.target==='public'?'on':''}" data-id="public" onclick="pickEditTarget('public')"><span style="font-size:18px">🌐</span>Public<span class="d">Everyone</span></button>`+
+    circlesCache.map(c=>`<button class="${editor.target===c.id?'on':''}" data-id="${c.id}" onclick="pickEditTarget('${c.id}')"><span style="font-size:18px">${c.emoji||'🎵'}</span>${esc(c.name)}<span class="d">${c.members.length} ppl</span></button>`).join('');
+}
+function pickEditTarget(id){ editor.target=id; document.querySelectorAll('#edit-targets button').forEach(b=>b.classList.toggle('on',b.dataset.id===id)); }
+async function saveEdit(){
+  const cap=document.getElementById('edit-cap').value.trim();
+  try{ await api('PATCH','/posts/'+editor.id,{caption:cap, target:editor.target}); closeSheet(); render(); toast('Updated'); }
+  catch{ toast('Could not update'); }
+}
+function confirmDelete(pid){
+  openSheet(`<h3>Delete this share?</h3>
+    <p class="hint">It will be removed for everyone in its audience. This can't be undone.</p>
+    <button class="btn-primary" style="background:oklch(0.62 0.2 25)" onclick="doDelete('${pid}')">Delete</button>
+    <button class="btn-pill ghost" style="width:100%;margin-top:10px;padding:12px" onclick="closeSheet()">Cancel</button>`);
+}
+async function doDelete(pid){
+  try{ await api('DELETE','/posts/'+pid); closeSheet(); render(); toast('Deleted'); }
+  catch{ toast('Could not delete'); }
+}
+
+/* ── save / bookmark a track ────────────────────────────────── */
+async function toggleSave(track){
+  try{ const {saved}=await api('POST','/saved',{track}); render(); toast(saved?'Saved to your library':'Removed from saved'); }
+  catch{ toast('Could not save'); }
+}
 
 /* ════════════════════════════════════════════════════════════════
    CIRCLES
@@ -329,12 +411,14 @@ async function toggleFollow(id){
    LIBRARY / PROFILE
 ════════════════════════════════════════════════════════════════ */
 async function renderLibrary(){
-  const [me, top, mine] = await Promise.all([
+  const [me, top, mine, saved] = await Promise.all([
     api('GET','/me'),
     api('GET','/spotify/top-tracks').catch(()=>[]),
-    api('GET','/users/'+ME.id).catch(()=>({posts:[]}))
+    api('GET','/users/'+ME.id).catch(()=>({posts:[]})),
+    api('GET','/saved').catch(()=>[])
   ]);
   ME = {...ME, ...me};
+  const savedHTML = saved.length ? saved.map(trackRow).join('') : '';
   const topHTML = top.length? top.map((s,i)=>{const j=JSON.stringify(s).replace(/'/g,"&#39;");return `<div class="row" style="cursor:pointer">
       <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0" onclick='playInApp(${j})'>
         <div style="width:22px;text-align:center;font-weight:800;color:var(--dim);font-size:14px">${i+1}</div>
@@ -359,29 +443,28 @@ async function renderLibrary(){
       <button class="btn-pill ghost" style="margin-top:4px" onclick="logout()">Log out</button>
     </div>
     <div class="auto-card">
-      <div class="ac-text"><div class="ac-t">Daily auto-share 🎧</div>
-        <div class="ac-s">Automatically post your #1 top track to Public once a day.</div></div>
+      <div class="ac-text"><div class="ac-t">Daily top-track suggestion 🎧</div>
+        <div class="ac-s">Once a day we'll surface your #1 top track and ask if you want to share it — you choose the audience before anything posts.</div></div>
       <button class="switch ${me.autoShare?'on':''}" id="auto-switch" onclick="toggleAutoShare()"><span class="knob"></span></button>
     </div>
-    <div style="padding:0 18px 4px"><button class="btn-pill ghost" style="width:100%;padding:12px" onclick="shareTopNow()">Share today's top track now</button></div>
+    <div style="padding:0 18px 4px"><button class="btn-pill ghost" style="width:100%;padding:12px" onclick="shareTopNow()">Share my top track now</button></div>
+    ${savedHTML?`<div class="sec-title">Saved tracks</div>${savedHTML}`:''}
     <div class="sec-title">Top songs this month</div>${topHTML}
     <div class="sec-title">Your recent shares</div>${shareHTML}`;
 }
 async function toggleAutoShare(){
   const sw=document.getElementById('auto-switch'); const on=!sw.classList.contains('on');
   sw.classList.toggle('on',on);
-  try{ await api('PATCH','/me',{autoShare:on}); toast(on?'Auto-share on':'Auto-share off'); }
+  try{ await api('PATCH','/me',{autoShare:on}); toast(on?'Daily suggestion on':'Daily suggestion off'); }
   catch{ sw.classList.toggle('on',!on); toast('Could not update'); }
 }
 async function shareTopNow(){
-  toast('Checking your top track…');
+  toast('Finding your top track…');
   try{
-    const r=await api('POST','/auto-share/run');
-    if(r.posted){ toast('Shared: '+r.posted.title); go('home'); }
-    else if(r.skipped==='no_top_track'){ toast('No top track yet — listen on Spotify a while first'); }
-    else if(r.skipped==='same_track'){ toast('That track is already your latest share'); }
-    else { toast('Nothing to share right now'); }
-  }catch(e){ toast('Could not share top track'); }
+    const top = await api('GET','/spotify/top-tracks');
+    if(!top.length){ toast('No top track yet — listen on Spotify a while first'); return; }
+    openComposer(top[0]);   // opens the composer so you confirm + pick audience + caption
+  }catch(e){ toast('Could not load your top track'); }
 }
 function editBio(){
   openSheet(`<h3>Music bio</h3><textarea class="composer-caption" id="bio-input" maxlength="240" placeholder="What do you listen to?">${esc(ME.bio)}</textarea>
@@ -469,28 +552,63 @@ async function pollNowPlaying(){
 /* ════════════════════════════════════════════════════════════════
    COMPOSER
 ════════════════════════════════════════════════════════════════ */
-let composer = { track:null, target:'public' };
-async function openComposer(prefill){
-  composer = { track: prefill || nowPlaying || null, target:'public' };
-  const circles = circlesCache.length?circlesCache:await api('GET','/circles');
-  const targets = `<button class="on" data-id="public" onclick="pickTarget('public')"><span style="font-size:18px">🌐</span>Public<span class="d">Everyone</span></button>`+
-    circles.map(c=>`<button data-id="${c.id}" onclick="pickTarget('${c.id}')"><span style="font-size:18px">${c.emoji||'🎵'}</span>${esc(c.name)}<span class="d">${c.members.length} ppl</span></button>`).join('');
-  openSheet(`<h3>Share a track</h3><p class="hint">Search Spotify, or use what's playing, then pick who sees it.</p>
+let composer = { track:null, target:'public', fromAuto:false };
+async function openComposer(prefill, opts){
+  composer = { track: prefill || nowPlaying || null, target:'public', fromAuto: !!(opts&&opts.auto) };
+  if(!circlesCache.length){ try{ circlesCache = await api('GET','/circles'); }catch{} }
+  openSheet(`<h3>Share a track</h3><p class="hint">${composer.fromAuto?'This is your top track today — choose who sees it.':"Search Spotify, or use what's playing, then pick who sees it."}</p>
     <div class="field-label">Who can see this</div>
-    <div class="seg" id="seg-targets">${targets}</div>
+    <div class="seg" id="seg-targets">${targetButtons()}</div>
+    <div id="inline-circle"></div>
     <div class="field-label">Track</div>
     <div class="searchbar" style="margin:0 0 10px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="comp-search" placeholder="Search Spotify…" oninput="compSearch(this.value)"></div>
     <div id="comp-picked"></div>
     <div id="comp-results" style="max-height:230px;overflow-y:auto;margin-bottom:14px"></div>
-    <textarea class="composer-caption" id="comp-cap" placeholder="Say something about it… (optional)"></textarea>
+    <textarea class="composer-caption" id="comp-cap" placeholder="Say something about it… (optional)">${composer.fromAuto?'🎧 My top track right now':''}</textarea>
     <button class="btn-primary" id="comp-go" onclick="submitShare()">Share</button>`);
   renderPicked();
-  // seed results with now-playing/top
   const seed = await api('GET','/spotify/top-tracks').catch(()=>[]);
   fillCompResults(nowPlaying?[nowPlaying,...seed.filter(t=>t.id!==nowPlaying.id)]:seed);
 }
+function targetButtons(){
+  return `<button class="${composer.target==='public'?'on':''}" data-id="public" onclick="pickTarget('public')"><span style="font-size:18px">🌐</span>Public<span class="d">Everyone</span></button>`+
+    circlesCache.map(c=>`<button class="${composer.target===c.id?'on':''}" data-id="${c.id}" onclick="pickTarget('${c.id}')"><span style="font-size:18px">${c.emoji||'🎵'}</span>${esc(c.name)}<span class="d">${c.members.length} ppl</span></button>`).join('')+
+    `<button class="new-circle-btn" onclick="toggleInlineCircle()"><span style="font-size:18px">＋</span>New circle<span class="d">private</span></button>`;
+}
+function refreshTargets(){ const seg=document.getElementById('seg-targets'); if(seg) seg.innerHTML=targetButtons(); }
 function pickTarget(id){ composer.target=id; document.querySelectorAll('#seg-targets button').forEach(b=>b.classList.toggle('on',b.dataset.id===id)); }
+
+/* ── create a circle inline, without leaving the share flow ──── */
+let inlineCircle = { open:false, emoji:'🎵' };
+function toggleInlineCircle(){
+  const host=document.getElementById('inline-circle');
+  if(inlineCircle.open){ host.innerHTML=''; inlineCircle.open=false; return; }
+  inlineCircle = { open:true, emoji:'🎵' };
+  const emojis=['🎵','🎧','🔊','☕','🌙','🔥','✨','🎸','🪩','🎤'];
+  host.innerHTML=`<div class="inline-create">
+    <input class="text-field" id="ic-name" placeholder="Circle name (e.g. Roadtrip Crew)" style="margin-bottom:10px">
+    <div class="chips" style="padding:0 0 10px">${emojis.map(e=>`<button class="chip" data-icemoji="${e}" style="font-size:18px;${e===inlineCircle.emoji?'background:var(--accent);color:var(--accent-text)':''}" onclick="pickInlineEmoji('${e}')">${e}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-pill ghost" style="flex:1;padding:11px" onclick="toggleInlineCircle()">Cancel</button>
+      <button class="btn-pill" style="flex:2;padding:11px" onclick="createInlineCircle()">Create &amp; select</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('ic-name')?.focus(),0);
+}
+function pickInlineEmoji(e){ inlineCircle.emoji=e; document.querySelectorAll('[data-icemoji]').forEach(b=>{const on=b.dataset.icemoji===e;b.style.background=on?'var(--accent)':'';b.style.color=on?'var(--accent-text)':'';}); }
+async function createInlineCircle(){
+  const name=(document.getElementById('ic-name').value||'').trim();
+  if(!name){ toast('Name your circle'); return; }
+  try{
+    const c = await api('POST','/circles',{name, emoji:inlineCircle.emoji, memberIds:[]});
+    circlesCache.push(c);
+    composer.target = c.id;
+    inlineCircle.open=false; document.getElementById('inline-circle').innerHTML='';
+    refreshTargets();
+    toast('Circle created — sharing here');
+  }catch{ toast('Could not create circle'); }
+}
 let compTimer=null;
 function compSearch(q){ clearTimeout(compTimer); compTimer=setTimeout(async()=>{
   q=q.trim(); if(!q){ const seed=await api('GET','/spotify/top-tracks').catch(()=>[]); return fillCompResults(seed); }
@@ -516,6 +634,7 @@ async function submitShare(){
   document.getElementById('comp-go').disabled=true;
   try{
     await api('POST','/posts',{track:composer.track, caption:cap, target:composer.target});
+    if(composer.fromAuto){ await api('POST','/auto-share/dismiss').catch(()=>{}); pendingSuggestion=null; }
     closeSheet();
     state.view='home'; state.circleFilter='all';
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab==='home'));
