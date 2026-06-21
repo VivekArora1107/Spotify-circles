@@ -5,7 +5,13 @@ This folder holds the **first prototype** of Circles: a single self-contained HT
 It came before the full working app (in the parent folder) and exists here to show the **design and product exploration** that led to the real build.
 
 ## How to view it
-Just double-click `circles-prototype.html` (or drag it into any browser). Click **Connect with Spotify** (simulated) to enter, then explore the feed, circles, search, library, the share composer, reactions, and replies.
+
+**Easiest — open it live in your browser (no download):**
+👉 **https://raw.githack.com/VivekArora1107/Spotify-circles/main/prototype/circles-prototype.html**
+
+> Note: clicking the `.html` file directly on GitHub only shows the source code — GitHub never runs HTML files. Use the link above (it serves the file as a real web page), or download the file and open it locally.
+
+**Or locally:** download `circles-prototype.html` and double-click it (or drag it into any browser). Click **Connect with Spotify** (simulated) to enter, then explore the feed, circles, search, library, the share composer, reactions, and replies.
 
 ## What it demonstrates
 - The full screen flow and interaction design: Home feed, Circles (+ create), Search, Library/Profile, Activity, a share composer, emoji reactions, and replies.

@@ -4,6 +4,12 @@
 
 > Circles is **not** a Spotify feature or a clone of Spotify's UI. It's its own product that uses Spotify only to read your account and listening data. The social layer (circles, feed, reactions, replies, follows, notifications) is fully owned by this app.
 
+### ▶ Try the clickable prototype (no install, runs in your browser)
+
+**[Open the live prototype →](https://raw.githack.com/VivekArora1107/Spotify-circles/main/prototype/circles-prototype.html)**
+
+That's a self-contained, mock-data design preview of the app — click "Connect with Spotify" (simulated) and explore the feed, circles, search, sharing, and reactions. (GitHub itself shows `.html` files as source code, so use the link above to actually run it.) The full working app with real Spotify login lives in this repo — see setup below.
+
 ---
 
 ## Table of contents
